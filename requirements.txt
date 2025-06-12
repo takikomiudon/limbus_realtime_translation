@@ -1,0 +1,4 @@
+google-cloud-speech
+pyaudio
+google-genai
+python-dotenv
