@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: limbus-translation
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn server:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT
+    envVars:
+      - key: API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.11.0
