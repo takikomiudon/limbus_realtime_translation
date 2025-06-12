@@ -230,6 +230,7 @@ def translate_text(text: str) -> str:
                 지아·초우: ジア・チォウ
                 로보토미 코퍼레이션: Lobotomy Corporation
                 라이브러리 오브 루이나: Library of Ruina(ラオル)
+                티페리트: ティファレト
                 증오의 여왕: 憎しみの女王
                 절망의 기사: 絶望の騎士
                 탐욕의 왕: 貪欲の王
@@ -352,6 +353,7 @@ def main() -> None:
             {"value": "싱클레어", "boost": 15},  # シンクレア
             {"value": "아웃티스", "boost": 15},  # ウーティス
             {"value": "그레고르", "boost": 15},  # グレゴール
+            {"value": "티페리트", "boost": 15},  # 囚人
             {"value": "인격", "boost": 15},  # 人格
             {"value": "EGO", "boost": 15},  # EGO
             {"value": "거울 던전", "boost": 15},  # 鏡ダンジョン
@@ -361,6 +363,15 @@ def main() -> None:
             {"value": "가주 후보", "boost": 15},  # 家主候補
             {"value": "레이혼", "boost": 15},  # レイホン
             {"value": "지아·초우", "boost": 15},  # ジア・チォウ
+            {"value": "로보토미 코퍼레이션", "boost": 15},  # Lobotomy Corporation
+            {"value": "라이브러리 오브 루이나", "boost": 15},  # Library of Ruina(ラオル)
+            {"value": "티페리트", "boost": 15},  # ティファレト
+            {"value": "증오의 여왕", "boost": 15},  # 憎しみの女王
+            {"value": "절망의 기사", "boost": 15},  # 絶望の騎士
+            {"value": "탐욕의 왕", "boost": 15},  # 貪欲の王
+            {"value": "분노의 시종", "boost": 15},  # 憤怒の従者
+            {"value": "마법소녀", "boost": 15},  # 魔法少女
+            {"value": "명일방주", "boost": 15},  # アークナイツ
         ]
     )
 
