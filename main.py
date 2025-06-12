@@ -6,12 +6,16 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 import pyaudio
+import requests
 from dotenv import load_dotenv
 from google import genai
 from google.cloud import speech
 
 load_dotenv()
 
+# API設定
+API_BASE_URL = os.environ.get("API_BASE_URL")
+API_KEY = os.environ.get("API_KEY")
 
 # Audio recording parameters
 STREAMING_LIMIT = 240000  # 4 minutes
@@ -249,9 +253,40 @@ def translate_text(text: str) -> str:
 
 
 def print_translation(translated_text: str, timestamp: int) -> None:
-    """翻訳結果を表示する関数"""
+    """翻訳結果を表示し、Webサーバーに送信する関数"""
+    current_time = int(time.time() * 1000)  # 現在時刻をミリ秒で取得
+
+    # コンソールに表示
     sys.stdout.write(YELLOW)
     sys.stdout.write(f"{timestamp}: 翻訳: {translated_text}\n")
+
+    # Webサーバーに送信
+    if API_BASE_URL:
+        try:
+            headers = {}
+            if API_KEY:
+                headers["X-API-Key"] = API_KEY
+
+            payload = {
+                "timestamp": current_time,  # 現在時刻を使用
+                "translation": translated_text
+            }
+
+            response = requests.post(
+                API_BASE_URL,
+                json=payload,
+                headers=headers
+            )
+
+            if response.status_code != 200:
+                sys.stdout.write(RED)
+                sys.stdout.write(
+                    f"エラー: 送信失敗（ステータスコード: {response.status_code}）\n"
+                )
+
+        except Exception as e:
+            sys.stdout.write(RED)
+            sys.stdout.write(f"エラー: 送信中に例外が発生: {str(e)}\n")
 
 
 def listen_print_loop(responses: object, stream: object) -> None:
