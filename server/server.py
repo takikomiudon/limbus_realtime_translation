@@ -16,7 +16,9 @@ load_dotenv()
 app = FastAPI(title="Limbus Translation API")
 
 # Firestoreクライアントの初期化
-db = firestore.Client(project='limbus-realtime-translator')
+db = firestore.Client(
+    database='limbus-realtime-translator'
+)
 
 # CORS設定
 app.add_middleware(
@@ -150,7 +152,7 @@ async def get_html():
         </style>
     </head>
     <body>
-        <h1>Limbus Translation History</h1>
+        <h1>Limbus Translation History v1</h1>
         <div id="controls">
             <button onclick="toggleAutoScroll()" id="autoScrollBtn">自動スクロール: ON</button>
         </div>
