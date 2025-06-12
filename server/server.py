@@ -4,15 +4,12 @@ import os
 import time
 from datetime import datetime
 from functools import wraps
-from typing import Optional
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request, Security
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.security.api_key import APIKeyHeader
-from google.api_core import retry
 from google.cloud import firestore
 from pydantic import BaseModel
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -83,10 +80,6 @@ app = FastAPI(title="Limbus Translation API")
 
 # セキュリティミドルウェアの追加
 app.add_middleware(RateLimitMiddleware)
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1"]  # 本番環境では適切なホストを設定
-)
 
 # Firestoreクライアントの初期化
 try:
@@ -192,7 +185,7 @@ async def get_html():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Limbus Translation History v1.1</title>
+        <title>Limbus Translation History v1.2</title>
         <meta charset="utf-8">
         <style>
             body {
