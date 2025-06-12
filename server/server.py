@@ -1,11 +1,12 @@
 import os
-from typing import List
+from datetime import datetime
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.security.api_key import APIKeyHeader
+from google.cloud import firestore
 from pydantic import BaseModel
 
 load_dotenv()
@@ -13,10 +14,13 @@ load_dotenv()
 
 app = FastAPI(title="Limbus Translation API")
 
+# Firestoreクライアントの初期化
+db = firestore.Client()
+
 # CORS設定
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8000"],  # 許可するオリジンを制限
+    allow_origins=["*"],  # 本番環境では適切に制限してください
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["X-API-Key"],
@@ -24,7 +28,6 @@ app.add_middleware(
 
 # APIキー認証の設定
 API_KEY = os.environ["API_KEY"]
-print(f"API_KEY: {API_KEY}", flush=True)
 api_key_header = APIKeyHeader(name="X-API-Key")
 
 
@@ -42,30 +45,38 @@ class Translation(BaseModel):
     translation: str
 
 
-# インメモリでの翻訳履歴保存（本番環境ではデータベースを使用することを推奨）
-translations: List[Translation] = []
-
-
 @app.post("/api/translations")
 async def create_translation(
     translation: Translation,
     api_key: str = Depends(get_api_key)
 ):
     """新しい翻訳を保存するエンドポイント"""
-    translations.append(translation)
+    # Firestoreに保存
+    doc_ref = db.collection('translations').document()
+    doc_ref.set({
+        'timestamp': translation.timestamp,
+        'translation': translation.translation,
+        'created_at': datetime.now()
+    })
     return {"status": "success"}
 
 
 @app.get("/api/translations")
 async def get_translations(limit: int = 100):
     """保存された翻訳を取得するエンドポイント"""
-    return {
-        "translations": sorted(
-            translations,
-            key=lambda x: x.timestamp,
-            reverse=False
-        )[:limit]
-    }
+    # Firestoreから取得
+    translations_ref = db.collection('translations')
+    docs = translations_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(limit).stream()
+
+    translations = []
+    for doc in docs:
+        data = doc.to_dict()
+        translations.append({
+            'timestamp': data['timestamp'],
+            'translation': data['translation']
+        })
+
+    return {"translations": translations}
 
 
 @app.delete("/api/translations")
@@ -73,7 +84,11 @@ async def clear_translations(
     api_key: str = Depends(get_api_key)
 ):
     """全ての翻訳履歴を削除するエンドポイント"""
-    translations.clear()
+    # Firestoreのコレクションを削除
+    translations_ref = db.collection('translations')
+    docs = translations_ref.stream()
+    for doc in docs:
+        doc.reference.delete()
     return {"status": "success"}
 
 
