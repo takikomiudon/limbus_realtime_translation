@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 
@@ -22,7 +23,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # 本番環境では適切に制限してください
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_methods=["GET", "POST"],
     allow_headers=["X-API-Key"],
 )
 
@@ -33,8 +34,10 @@ api_key_header = APIKeyHeader(name="X-API-Key")
 
 async def get_api_key(api_key: str = Security(api_key_header)):
     if not API_KEY:
+        logging.error("API key not configured in server")
         raise HTTPException(status_code=500, detail="API key not configured")
     if api_key != API_KEY:
+        logging.error(f"Invalid API key: {api_key} != {API_KEY}")
         raise HTTPException(status_code=403, detail="Invalid API key")
     return api_key
 
@@ -66,8 +69,8 @@ async def get_translations(limit: int = 100):
     """保存された翻訳を取得するエンドポイント"""
     # Firestoreから取得
     translations_ref = db.collection('translations')
-    docs = translations_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(limit).stream()
-
+    docs = translations_ref.order_by('timestamp', direction=firestore.Query.ASCENDING).limit(limit).stream()
+    
     translations = []
     for doc in docs:
         data = doc.to_dict()
@@ -75,21 +78,8 @@ async def get_translations(limit: int = 100):
             'timestamp': data['timestamp'],
             'translation': data['translation']
         })
-
+    
     return {"translations": translations}
-
-
-@app.delete("/api/translations")
-async def clear_translations(
-    api_key: str = Depends(get_api_key)
-):
-    """全ての翻訳履歴を削除するエンドポイント"""
-    # Firestoreのコレクションを削除
-    translations_ref = db.collection('translations')
-    docs = translations_ref.stream()
-    for doc in docs:
-        doc.reference.delete()
-    return {"status": "success"}
 
 
 # シンプルなHTMLページを提供するエンドポイント
@@ -162,7 +152,6 @@ async def get_html():
     <body>
         <h1>Limbus Translation History</h1>
         <div id="controls">
-            <button onclick="clearTranslations()">履歴をクリア</button>
             <button onclick="toggleAutoScroll()" id="autoScrollBtn">自動スクロール: ON</button>
         </div>
         <div id="translations"></div>
@@ -208,21 +197,6 @@ async def get_html():
                             scrollToBottom();
                         }
                     });
-            }
-
-            function clearTranslations() {
-                if (confirm('本当に履歴を削除しますか？')) {
-                    fetch('/api/translations', { 
-                        method: 'DELETE',
-                        headers: {
-                            'X-API-Key': prompt('APIキーを入力してください:')
-                        }
-                    })
-                    .then(() => {
-                        updateTranslations();
-                        lastTranslationCount = 0;
-                    });
-                }
             }
 
             // 初回読み込み
