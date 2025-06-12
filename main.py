@@ -254,8 +254,6 @@ def translate_text(text: str) -> str:
 
 def print_translation(translated_text: str, timestamp: int) -> None:
     """翻訳結果を表示し、Webサーバーに送信する関数"""
-    current_time = int(time.time() * 1000)  # 現在時刻をミリ秒で取得
-
     # コンソールに表示
     sys.stdout.write(YELLOW)
     sys.stdout.write(f"{timestamp}: 翻訳: {translated_text}\n")
@@ -268,7 +266,7 @@ def print_translation(translated_text: str, timestamp: int) -> None:
                 headers["X-API-Key"] = API_KEY
 
             payload = {
-                "timestamp": current_time,  # 現在時刻を使用
+                "timestamp": timestamp,  # 文字起こし完了時のタイムスタンプを使用
                 "translation": translated_text
             }
 
