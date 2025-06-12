@@ -16,7 +16,7 @@ load_dotenv()
 app = FastAPI(title="Limbus Translation API")
 
 # Firestoreクライアントの初期化
-db = firestore.Client()
+db = firestore.Client(project='limbus-realtime-translator')
 
 # CORS設定
 app.add_middleware(
