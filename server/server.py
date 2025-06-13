@@ -18,8 +18,9 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
 # レート制限の設定
-RATE_LIMIT_SECONDS = 0.2  # 0.2秒あたりの最大リクエスト数（1秒間に5リクエストまで）
-rate_limit_store = {}
+MAX_REQUESTS_PER_SECOND = 2  # 1秒間あたりの最大リクエスト数
+WINDOW_SIZE = 1  # 時間枠（秒）
+rate_limit_store = {}  # {ip: [timestamp1, timestamp2, ...]}
 
 # Firestoreの再試行設定
 RETRY_MULTIPLIER = 1.5  # 再試行間隔の乗数
@@ -67,26 +68,26 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         client_ip = request.client.host
         current_time = time.time()
 
-        if request.url.path == "/":
-            # HTMLページは4秒に1回まで
-            if client_ip in rate_limit_store:
-                last_request_time = rate_limit_store[client_ip]
-                if current_time - last_request_time < 4:
-                    raise HTTPException(
-                        status_code=429,
-                        detail="Too many requests. Please try again later."
-                    )
-        # APIエンドポイントは0.2秒に1回まで
-        elif request.url.path.startswith("/api/"):
-            if client_ip in rate_limit_store:
-                last_request_time = rate_limit_store[client_ip]
-                if current_time - last_request_time < RATE_LIMIT_SECONDS:
-                    raise HTTPException(
-                        status_code=429,
-                        detail="Too many requests. Please try again later."
-                    )
+        # IPアドレスごとのアクセス履歴を初期化
+        if client_ip not in rate_limit_store:
+            rate_limit_store[client_ip] = []
 
-        rate_limit_store[client_ip] = current_time
+        # 現在の時間枠内のアクセス記録のみを保持
+        rate_limit_store[client_ip] = [
+            t for t in rate_limit_store[client_ip]
+            if current_time - t < WINDOW_SIZE
+        ]
+
+        # 新しいアクセスを記録
+        rate_limit_store[client_ip].append(current_time)
+
+        # 時間枠内のアクセス回数をチェック
+        if len(rate_limit_store[client_ip]) > MAX_REQUESTS_PER_SECOND:
+            raise HTTPException(
+                status_code=429,
+                detail="Too many requests. Please try again later."
+            )
+
         return await call_next(request)
 
 
@@ -224,7 +225,7 @@ async def get_html():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>20250613 Limbus Companyアップデート日程配信 日本語訳 v1.0</title>
+        <title>20250613 Limbus Companyアップデート日程配信 日本語訳 v1.1</title>
         <meta charset="utf-8">
         <style>
             body {
@@ -336,7 +337,7 @@ async def get_html():
         </style>
     </head>
     <body>
-        <h1>Limbusアプデ日程配信 日本語訳 v1.0</h1>
+        <h1>Limbusアプデ日程配信 日本語訳 v1.1</h1>
         <div id="controls">
             <button onclick="toggleAutoScroll()" id="autoScrollBtn">自動スクロール: ON</button>
             <button onclick="manualRefresh()" id="refresh-button">手動更新</button>
