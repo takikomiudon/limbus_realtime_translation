@@ -18,7 +18,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
 # レート制限の設定
-RATE_LIMIT_SECONDS = 1  # 1秒あたりの最大リクエスト数
+RATE_LIMIT_SECONDS = 0.5  # 0.5秒あたりの最大リクエスト数（1秒間に2リクエストまで）
 rate_limit_store = {}
 
 # Firestoreの再試行設定
@@ -54,15 +54,21 @@ def with_firestore_retry(func):
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        # HTMLページへのアクセスはレート制限から除外
+        # HTMLページへのアクセスは緩めのレート制限を適用
+        client_ip = request.client.host
+        current_time = time.time()
+
         if request.url.path == "/":
-            return await call_next(request)
-
-        # APIエンドポイントのみレート制限を適用
-        if request.url.path.startswith("/api/"):
-            client_ip = request.client.host
-            current_time = time.time()
-
+            # HTMLページは3秒に1回まで
+            if client_ip in rate_limit_store:
+                last_request_time = rate_limit_store[client_ip]
+                if current_time - last_request_time < 3:
+                    raise HTTPException(
+                        status_code=429,
+                        detail="Too many requests. Please try again later."
+                    )
+        # APIエンドポイントは0.5秒に1回まで
+        elif request.url.path.startswith("/api/"):
             if client_ip in rate_limit_store:
                 last_request_time = rate_limit_store[client_ip]
                 if current_time - last_request_time < RATE_LIMIT_SECONDS:
@@ -71,8 +77,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                         detail="Too many requests. Please try again later."
                     )
 
-            rate_limit_store[client_ip] = current_time
-
+        rate_limit_store[client_ip] = current_time
         return await call_next(request)
 
 
@@ -269,11 +274,11 @@ async def get_html():
             let autoScroll = true;
             let lastTranslationCount = 0;
             let isUpdating = false;
-            let updateInterval = 2000; // 2秒ごとに更新
+            let updateInterval = 3000; // 3秒ごとに更新に変更
             let errorCount = 0;
             const MAX_ERROR_COUNT = 3;
             let nextUpdateTime = 0;
-            const MIN_UPDATE_INTERVAL = 1000; // 最小更新間隔（ミリ秒）
+            const MIN_UPDATE_INTERVAL = 2000; // 最小更新間隔を2秒に変更
 
             function formatTimestamp(timestamp) {
                 const date = new Date(timestamp);
