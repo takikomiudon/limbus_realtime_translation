@@ -224,7 +224,7 @@ async def get_html():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Limbus Translation History v1.2</title>
+        <title>20250613 Limbus Companyアップデート日程配信 日本語訳 v1.0</title>
         <meta charset="utf-8">
         <style>
             body {
@@ -336,7 +336,7 @@ async def get_html():
         </style>
     </head>
     <body>
-        <h1>Limbus Translation History v1.2</h1>
+        <h1>Limbusアプデ日程配信 日本語訳 v1.0</h1>
         <div id="controls">
             <button onclick="toggleAutoScroll()" id="autoScrollBtn">自動スクロール: ON</button>
             <button onclick="manualRefresh()" id="refresh-button">手動更新</button>
