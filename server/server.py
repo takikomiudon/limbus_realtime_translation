@@ -18,7 +18,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
 # レート制限の設定
-RATE_LIMIT_SECONDS = 0.5  # 0.5秒あたりの最大リクエスト数（1秒間に2リクエストまで）
+RATE_LIMIT_SECONDS = 0.2  # 0.2秒あたりの最大リクエスト数（1秒間に5リクエストまで）
 rate_limit_store = {}
 
 # Firestoreの再試行設定
@@ -54,20 +54,29 @@ def with_firestore_retry(func):
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        # POSTリクエストまたは正しいAPI Keyが提供されている場合はレート制限をスキップ
+        if request.method == "POST":
+            return await call_next(request)
+
+        # API Keyのチェック
+        api_key = request.headers.get("X-API-Key")
+        if api_key and api_key == API_KEY:
+            return await call_next(request)
+
         # HTMLページへのアクセスは緩めのレート制限を適用
         client_ip = request.client.host
         current_time = time.time()
 
         if request.url.path == "/":
-            # HTMLページは3秒に1回まで
+            # HTMLページは4秒に1回まで
             if client_ip in rate_limit_store:
                 last_request_time = rate_limit_store[client_ip]
-                if current_time - last_request_time < 3:
+                if current_time - last_request_time < 4:
                     raise HTTPException(
                         status_code=429,
                         detail="Too many requests. Please try again later."
                     )
-        # APIエンドポイントは0.5秒に1回まで
+        # APIエンドポイントは0.2秒に1回まで
         elif request.url.path.startswith("/api/"):
             if client_ip in rate_limit_store:
                 last_request_time = rate_limit_store[client_ip]
