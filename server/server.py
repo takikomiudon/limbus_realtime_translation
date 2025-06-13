@@ -257,7 +257,7 @@ async def get_html():
         </style>
     </head>
     <body>
-        <h1>Limbus Translation History v1</h1>
+        <h1>Limbus Translation History v1.2</h1>
         <div id="controls">
             <button onclick="toggleAutoScroll()" id="autoScrollBtn">自動スクロール: ON</button>
             <button onclick="manualRefresh()" id="refresh-button">手動更新</button>
@@ -276,7 +276,14 @@ async def get_html():
             const MIN_UPDATE_INTERVAL = 1000; // 最小更新間隔（ミリ秒）
 
             function formatTimestamp(timestamp) {
-                return new Date(timestamp).toLocaleString('ja-JP');
+                const date = new Date(timestamp);
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = String(date.getSeconds()).padStart(2, '0');
+                return `${year}年${month}月${day}日 ${hours}:${minutes}:${seconds}`;
             }
 
             function toggleAutoScroll() {
