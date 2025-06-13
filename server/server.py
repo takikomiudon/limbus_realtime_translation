@@ -6,7 +6,7 @@ from datetime import datetime
 from functools import wraps
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Request, Security
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.security.api_key import APIKeyHeader
@@ -55,40 +55,50 @@ def with_firestore_retry(func):
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        # POSTリクエストまたは正しいAPI Keyが提供されている場合はレート制限をスキップ
-        if request.method == "POST":
+        try:
+            # POSTリクエストまたは正しいAPI Keyが提供されている場合はレート制限をスキップ
+            if request.method == "POST":
+                return await call_next(request)
+
+            # API Keyのチェック
+            api_key = request.headers.get("X-API-Key")
+            if api_key and api_key == API_KEY:
+                return await call_next(request)
+
+            # HTMLページへのアクセスは緩めのレート制限を適用
+            client_ip = request.client.host
+            current_time = time.time()
+
+            # IPアドレスごとのアクセス履歴を初期化
+            if client_ip not in rate_limit_store:
+                rate_limit_store[client_ip] = []
+
+            # 現在の時間枠内のアクセス記録のみを保持
+            rate_limit_store[client_ip] = [
+                t for t in rate_limit_store[client_ip]
+                if current_time - t < WINDOW_SIZE
+            ]
+
+            # 新しいアクセスを記録
+            rate_limit_store[client_ip].append(current_time)
+
+            # 時間枠内のアクセス回数をチェック
+            if len(rate_limit_store[client_ip]) > MAX_REQUESTS_PER_SECOND:
+                logging.warning(f"Rate limit exceeded for IP: {client_ip}")
+                return Response(
+                    status_code=429,
+                    content="Rate limit exceeded",
+                    media_type="text/plain"
+                )
+
             return await call_next(request)
-
-        # API Keyのチェック
-        api_key = request.headers.get("X-API-Key")
-        if api_key and api_key == API_KEY:
-            return await call_next(request)
-
-        # HTMLページへのアクセスは緩めのレート制限を適用
-        client_ip = request.client.host
-        current_time = time.time()
-
-        # IPアドレスごとのアクセス履歴を初期化
-        if client_ip not in rate_limit_store:
-            rate_limit_store[client_ip] = []
-
-        # 現在の時間枠内のアクセス記録のみを保持
-        rate_limit_store[client_ip] = [
-            t for t in rate_limit_store[client_ip]
-            if current_time - t < WINDOW_SIZE
-        ]
-
-        # 新しいアクセスを記録
-        rate_limit_store[client_ip].append(current_time)
-
-        # 時間枠内のアクセス回数をチェック
-        if len(rate_limit_store[client_ip]) > MAX_REQUESTS_PER_SECOND:
-            raise HTTPException(
-                status_code=429,
-                detail="Too many requests. Please try again later."
+        except Exception as e:
+            logging.error(f"Error in rate limit middleware: {str(e)}")
+            return Response(
+                status_code=500,
+                content="Internal server error",
+                media_type="text/plain"
             )
-
-        return await call_next(request)
 
 
 app = FastAPI(title="Limbus Translation API")
