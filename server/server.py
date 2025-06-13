@@ -235,7 +235,7 @@ async def get_html():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>20250613 Limbus Companyアップデート日程配信 日本語訳 v1.1</title>
+        <title>20250613 Limbus Companyアップデート日程配信 日本語訳 v1.2</title>
         <meta charset="utf-8">
         <style>
             body {
@@ -344,10 +344,30 @@ async def get_html():
             #refresh-button {
                 margin-left: 10px;
             }
+            .notice {
+                margin-top: 30px;
+                padding: 15px;
+                background: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 5px;
+            }
+            .notice h2 {
+                font-size: 1.1em;
+                margin: 0 0 10px 0;
+                color: #495057;
+            }
+            .notice ul {
+                margin: 0;
+                padding-left: 20px;
+                color: #666;
+            }
+            .notice li {
+                margin: 5px 0;
+            }
         </style>
     </head>
     <body>
-        <h1>Limbusアプデ日程配信 日本語訳 v1.1</h1>
+        <h1>Limbusアプデ日程配信 日本語訳 v1.2</h1>
         <div id="controls">
             <button onclick="toggleAutoScroll()" id="autoScrollBtn">自動スクロール: ON</button>
             <button onclick="manualRefresh()" id="refresh-button">手動更新</button>
@@ -361,6 +381,15 @@ async def get_html():
         </div>
         <div id="error-message">エラーが発生しました。しばらく待ってから手動更新ボタンを押してください。</div>
         <div id="translations"></div>
+
+        <div class="notice">
+            <h2>ご利用に関する注意事項</h2>
+            <ul>
+                <li>ページの更新が短時間に集中した場合、一時的にアクセス制限がかかる場合がございます。</li>
+                <li>内容は随時更新される可能性がございますので、適宜ページの更新をお願いいたします。</li>
+                <li>機械翻訳を使用しているため、翻訳の精度には限界がございます。予めご了承ください。</li>
+            </ul>
+        </div>
 
         <script>
             let currentPage = 1;
