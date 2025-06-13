@@ -125,6 +125,7 @@ async def get_api_key(api_key: str = Security(api_key_header)):
 class Translation(BaseModel):
     timestamp: int
     translation: str
+    korean_text: str
 
 
 @app.post("/api/translations")
@@ -140,6 +141,7 @@ async def create_translation(
         doc_ref.set({
             'timestamp': translation.timestamp,
             'translation': translation.translation,
+            'korean_text': translation.korean_text,
             'created_at': datetime.now()
         })
         return {"status": "success"}
@@ -170,7 +172,8 @@ async def get_translations(
             data = doc.to_dict()
             translations.append({
                 'timestamp': data['timestamp'],
-                'translation': data['translation']
+                'translation': data['translation'],
+                'korean_text': data.get('korean_text', '')  # 既存のデータとの互換性のため
             })
 
         return {"translations": translations}
@@ -211,6 +214,9 @@ async def get_html():
                 margin: 10px 0;
                 border-radius: 5px;
                 box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
             }
             .timestamp {
                 color: #666;
@@ -219,6 +225,18 @@ async def get_html():
             .text {
                 margin-top: 5px;
                 font-size: 1.1em;
+            }
+            .text-container {
+                display: flex;
+                gap: 20px;
+            }
+            .korean-text {
+                flex: 1;
+                padding-right: 10px;
+                border-right: 1px solid #ddd;
+            }
+            .japanese-text {
+                flex: 1;
             }
             #controls {
                 position: sticky;
@@ -357,7 +375,10 @@ async def get_html():
                                     <div class="timestamp">
                                         ${formatTimestamp(t.timestamp)}
                                     </div>
-                                    <div class="text">${t.translation}</div>
+                                    <div class="text-container">
+                                        <div class="korean-text">${t.korean_text}</div>
+                                        <div class="japanese-text">${t.translation}</div>
+                                    </div>
                                 </div>
                             `)
                             .join('');

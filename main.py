@@ -252,13 +252,14 @@ def translate_text(text: str) -> str:
         return f"翻訳エラー: {e}"
 
 
-def print_translation(translated_text: str, timestamp: int) -> None:
+def print_translation(translated_text: str, korean_text: str, timestamp: int) -> None:
     """翻訳結果を表示し、Webサーバーに送信する関数"""
     # 現在時刻のタイムスタンプを取得（ミリ秒単位）
     current_timestamp = int(time.time() * 1000)
     
     # コンソールに表示
     sys.stdout.write(YELLOW)
+    sys.stdout.write(f"{timestamp}: 韓国語: {korean_text}\n")
     sys.stdout.write(f"{timestamp}: 翻訳: {translated_text}\n")
 
     # Webサーバーに送信
@@ -270,7 +271,8 @@ def print_translation(translated_text: str, timestamp: int) -> None:
 
             payload = {
                 "timestamp": current_timestamp,
-                "translation": translated_text
+                "translation": translated_text,
+                "korean_text": korean_text
             }
 
             response = requests.post(
@@ -349,7 +351,7 @@ def listen_print_loop(responses: object, stream: object) -> None:
             # 翻訳を非同期で実行
             translator_pool.submit(
                 lambda t=transcript, ts=corrected_time: print_translation(
-                    translate_text(t), ts
+                    translate_text(t), t, ts
                 )
             )
 
