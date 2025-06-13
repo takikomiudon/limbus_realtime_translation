@@ -163,18 +163,32 @@ async def create_translation(
 @with_firestore_retry
 async def get_translations(
     limit: int = 100,
+    page: int = 1,
+    order: str = "asc"  # asc または desc
 ):
     """保存された翻訳を取得するエンドポイント"""
     if limit > 1000:  # 最大取得件数の制限
         limit = 1000
 
+    if page < 1:
+        page = 1
+
     try:
         # Firestoreから取得
         translations_ref = db.collection('translations')
+
+        # 総件数を取得
+        total_docs = len(list(translations_ref.stream()))
+        total_pages = (total_docs + limit - 1) // limit
+
+        # ソート順の設定
+        direction = firestore.Query.ASCENDING if order == "asc" else firestore.Query.DESCENDING
+
+        # ページネーションの実装
         docs = translations_ref.order_by(
             'timestamp',
-            direction=firestore.Query.ASCENDING
-        ).limit(limit).stream()
+            direction=direction
+        ).offset((page - 1) * limit).limit(limit).stream()
 
         translations = []
         for doc in docs:
@@ -182,10 +196,18 @@ async def get_translations(
             translations.append({
                 'timestamp': data['timestamp'],
                 'translation': data['translation'],
-                'korean_text': data.get('korean_text', '')  # 既存のデータとの互換性のため
+                'korean_text': data.get('korean_text', '')
             })
 
-        return {"translations": translations}
+        return {
+            "translations": translations,
+            "pagination": {
+                "current_page": page,
+                "total_pages": total_pages,
+                "total_items": total_docs,
+                "items_per_page": limit
+            }
+        }
     except Exception as e:
         logging.error(f"Failed to fetch translations: {e}")
         raise HTTPException(
@@ -254,6 +276,31 @@ async def get_html():
                 padding: 20px 0;
                 margin-bottom: 20px;
                 z-index: 100;
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            }
+            .pagination {
+                display: flex;
+                gap: 5px;
+                align-items: center;
+                margin-left: auto;
+            }
+            .pagination button {
+                padding: 5px 10px;
+                background: #007bff;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            .pagination button:disabled {
+                background: #cccccc;
+                cursor: not-allowed;
+            }
+            .pagination-info {
+                margin: 0 10px;
+                color: #666;
             }
             button {
                 padding: 8px 15px;
@@ -293,19 +340,28 @@ async def get_html():
         <div id="controls">
             <button onclick="toggleAutoScroll()" id="autoScrollBtn">自動スクロール: ON</button>
             <button onclick="manualRefresh()" id="refresh-button">手動更新</button>
+            <div class="pagination">
+                <button onclick="changePage('first')" id="firstPageBtn">最初へ</button>
+                <button onclick="changePage('prev')" id="prevPageBtn">前へ</button>
+                <span class="pagination-info" id="pageInfo">1 / 1</span>
+                <button onclick="changePage('next')" id="nextPageBtn">次へ</button>
+                <button onclick="changePage('last')" id="lastPageBtn">最後へ</button>
+            </div>
         </div>
         <div id="error-message">エラーが発生しました。しばらく待ってから手動更新ボタンを押してください。</div>
         <div id="translations"></div>
 
         <script>
+            let currentPage = 1;
+            let totalPages = 1;
             let autoScroll = true;
             let lastTranslationCount = 0;
             let isUpdating = false;
-            let updateInterval = 3000; // 3秒ごとに更新に変更
+            let updateInterval = 3000;
             let errorCount = 0;
             const MAX_ERROR_COUNT = 3;
             let nextUpdateTime = 0;
-            const MIN_UPDATE_INTERVAL = 2000; // 最小更新間隔を2秒に変更
+            const MIN_UPDATE_INTERVAL = 2000;
 
             function formatTimestamp(timestamp) {
                 const date = new Date(timestamp);
@@ -328,6 +384,37 @@ async def get_html():
                 if (autoScroll) {
                     const container = document.getElementById('translations');
                     container.scrollTop = container.scrollHeight;
+                }
+            }
+
+            function updatePaginationButtons() {
+                document.getElementById('firstPageBtn').disabled = currentPage === 1;
+                document.getElementById('prevPageBtn').disabled = currentPage === 1;
+                document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
+                document.getElementById('lastPageBtn').disabled = currentPage === totalPages;
+                document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
+            }
+
+            async function changePage(action) {
+                let newPage = currentPage;
+                switch (action) {
+                    case 'first':
+                        newPage = 1;
+                        break;
+                    case 'prev':
+                        newPage = Math.max(1, currentPage - 1);
+                        break;
+                    case 'next':
+                        newPage = Math.min(totalPages, currentPage + 1);
+                        break;
+                    case 'last':
+                        newPage = totalPages;
+                        break;
+                }
+
+                if (newPage !== currentPage) {
+                    currentPage = newPage;
+                    await updateTranslations();
                 }
             }
 
@@ -370,28 +457,36 @@ async def get_html():
                 isUpdating = true;
 
                 try {
-                    const response = await fetch('/api/translations');
+                    const response = await fetch(`/api/translations?page=${currentPage}`);
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     const data = await response.json();
 
-                    if (data.translations.length !== lastTranslationCount) {
-                        const container = document.getElementById('translations');
-                        container.innerHTML = data.translations
-                            .map(t => `
+                    // ページネーション情報の更新
+                    totalPages = data.pagination.total_pages;
+                    updatePaginationButtons();
+
+                    const container = document.getElementById('translations');
+                    container.innerHTML = data.translations
+                        .map((t, index) => {
+                            // 現在のページと位置から通し番号を計算
+                            const itemNumber = (currentPage - 1) * data.pagination.items_per_page + index + 1;
+                            return `
                                 <div class="translation">
                                     <div class="timestamp">
-                                        ${formatTimestamp(t.timestamp)}
+                                        ${itemNumber}. ${formatTimestamp(t.timestamp)}
                                     </div>
                                     <div class="text-container">
                                         <div class="korean-text">${t.korean_text}</div>
                                         <div class="japanese-text">${t.translation}</div>
                                     </div>
                                 </div>
-                            `)
-                            .join('');
-                        lastTranslationCount = data.translations.length;
+                            `
+                        })
+                        .join('');
+
+                    if (autoScroll && currentPage === totalPages) {
                         scrollToBottom();
                     }
                 } catch (error) {
