@@ -18,9 +18,14 @@ from fastapi.responses import HTMLResponse
 from fastapi.security.api_key import APIKeyHeader
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from server.config import ServerSettings, load_settings
-from server.models import Translation
-from server.repository import FirestoreTranslationRepository, TranslationRepository
+try:
+    from server.config import ServerSettings, load_settings
+    from server.models import Translation
+    from server.repository import FirestoreTranslationRepository, TranslationRepository
+except ModuleNotFoundError:
+    from config import ServerSettings, load_settings
+    from models import Translation
+    from repository import FirestoreTranslationRepository, TranslationRepository
 
 logging.basicConfig(level=logging.INFO)
 

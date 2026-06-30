@@ -1,10 +1,13 @@
 """server.server
 
-Backward-compatible ASGI entrypoint for the translation API server.
-Runtime implementation lives in server.app so it can be configured and tested.
+Backward-compatible ASGI entrypoint for package and Cloud Build source deploys.
+The import fallback supports Cloud Build Triggers that use server/ as root.
 """
 
-from server.app import create_app, get_translation_repository, rate_limit_store
+try:
+    from server.app import create_app, get_translation_repository, rate_limit_store
+except ModuleNotFoundError:
+    from app import create_app, get_translation_repository, rate_limit_store
 
 __all__ = ["app", "get_translation_repository", "rate_limit_store"]
 

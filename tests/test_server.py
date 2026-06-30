@@ -7,6 +7,8 @@ These tests avoid Firestore so local development remains fast and offline.
 from __future__ import annotations
 
 import math
+import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -95,17 +97,38 @@ def test_package_exports_cloud_run_entrypoint() -> None:
 
 def test_buildpack_runtime_and_entrypoint_are_pinned() -> None:
     """Keep Cloud Run source deploys aligned with the tested server runtime."""
-    config = tomllib.loads((PROJECT_ROOT / "project.toml").read_text())
-    assert config["schema-version"] == "0.2"
-    build_env = {
-        item["name"]: item["value"]
-        for item in config["io"]["buildpacks"]["build"]["env"]
-    }
+    for config_path in [
+        PROJECT_ROOT / "project.toml",
+        PROJECT_ROOT / "server" / "project.toml",
+    ]:
+        config = tomllib.loads(config_path.read_text())
+        assert config["schema-version"] == "0.2"
+        build_env = {
+            item["name"]: item["value"]
+            for item in config["io"]["buildpacks"]["build"]["env"]
+        }
 
-    assert build_env["GOOGLE_PYTHON_VERSION"] == "3.12"
-    assert build_env["GOOGLE_ENTRYPOINT"] == (
-        "uvicorn server:app --host 0.0.0.0 --port $PORT"
+        assert build_env["GOOGLE_PYTHON_VERSION"] == "3.12"
+        assert build_env["GOOGLE_ENTRYPOINT"] == (
+            "uvicorn server:app --host 0.0.0.0 --port $PORT"
+        )
+
+
+def test_cloud_build_server_directory_entrypoint_imports() -> None:
+    """Verify uvicorn server:app can import when server/ is the build root."""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import server; assert server.app is not None",
+        ],
+        cwd=PROJECT_ROOT / "server",
+        check=False,
+        capture_output=True,
+        text=True,
     )
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_get_translations_returns_fake_data_and_pagination() -> None:
