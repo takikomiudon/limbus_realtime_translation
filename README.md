@@ -115,40 +115,14 @@ docker build -t limbus-translation-server .
 ```
 
 CI は GitHub Actions の `.github/workflows/ci.yml` で、uv sync、Ruff、pytest、Docker build、Firestore emulator integration test を実行します。
-`main` ブランチへの push では、これらの job が成功した後に Cloud Run へ自動デプロイします。
 
-## Cloud Run 自動デプロイ
+## Cloud Run デプロイ
 
-GitHub Actions から Cloud Run へデプロイするには、GitHub repository の Settings で以下を設定します。
+Cloud Run への自動デプロイは Google Cloud 側の Cloud Build Trigger で管理します。
+GitHub Actions は CI のみを担当するため、同じ push で二重に Cloud Run デプロイされることを避けます。
 
-Secrets:
-
-- `GCP_SA_KEY`: Google Cloud サービスアカウントキー JSON の全文
-- `API_KEY`: クライアントと Cloud Run サーバーで共有する API キー
-
-Variables:
-
-- `GCP_PROJECT_ID`: デプロイ先の Google Cloud project ID
-- `GCP_REGION`: Cloud Run と Artifact Registry の region（例: `asia-northeast1`）
-- `ARTIFACT_REGISTRY_REPOSITORY`: Docker image を push する Artifact Registry repository 名
-- `CLOUD_RUN_SERVICE`: Cloud Run service 名
-- `FIRESTORE_DATABASE`: Cloud Run サーバーが使う Firestore database 名
-- `CORS_ORIGINS`: 許可する CORS origin。複数指定する場合は comma 区切り
-
-Artifact Registry repository は事前に作成しておきます。Cloud Run service は存在しない場合、deploy 時に作成されます。
-
-`GCP_SA_KEY` のサービスアカウントには、少なくとも以下の権限を付与します。
-
-- Cloud Run Admin
-- Artifact Registry Writer
-- Service Account User
-- Firestore への読み書きに必要な権限
-
-自動デプロイで作成される Docker image は、以下の形式で Artifact Registry に push されます。
-
-```text
-REGION-docker.pkg.dev/PROJECT_ID/REPOSITORY/limbus-translation-server:GITHUB_SHA
-```
+デプロイ設定を確認する場合は、Google Cloud Console の Cloud Build Triggers で対象 repository、branch、Cloud Run service、region、Artifact Registry の保存先を確認してください。
+Cloud Run の runtime 環境変数（`API_KEY`、`GOOGLE_CLOUD_PROJECT`、`FIRESTORE_DATABASE`、`CORS_ORIGINS` など）は Cloud Run service または Cloud Build Trigger 側で管理します。
 
 ## コード構成
 
