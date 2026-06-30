@@ -11,6 +11,7 @@ import math
 import pytest
 from fastapi.testclient import TestClient
 
+import server
 from server.server import app, get_translation_repository, rate_limit_store
 
 
@@ -81,6 +82,11 @@ def test_get_html_returns_page() -> None:
 
     assert response.status_code == 200
     assert "Limbus" in response.text
+
+
+def test_package_exports_cloud_run_entrypoint() -> None:
+    """Keep uvicorn server:app working for Cloud Build Trigger deploys."""
+    assert server.app is app
 
 
 def test_get_translations_returns_fake_data_and_pagination() -> None:

@@ -1,5 +1,9 @@
 """server package
 
 FastAPI server modules for storing and displaying translation history.
-The package marker keeps imports explicit for tests and uv-based tooling.
+This also exposes the ASGI app for legacy Cloud Run entrypoints.
 """
+
+from server.server import app
+
+__all__ = ["app"]
