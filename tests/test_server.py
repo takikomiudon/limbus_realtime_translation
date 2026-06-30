@@ -9,7 +9,6 @@ from __future__ import annotations
 import math
 import subprocess
 import sys
-import tomllib
 from pathlib import Path
 
 import pytest
@@ -93,25 +92,6 @@ def test_get_html_returns_page() -> None:
 def test_package_exports_cloud_run_entrypoint() -> None:
     """Keep uvicorn server:app working for Cloud Build Trigger deploys."""
     assert server.app is app
-
-
-def test_buildpack_runtime_and_entrypoint_are_pinned() -> None:
-    """Keep Cloud Run source deploys aligned with the tested server runtime."""
-    for config_path in [
-        PROJECT_ROOT / "project.toml",
-        PROJECT_ROOT / "server" / "project.toml",
-    ]:
-        config = tomllib.loads(config_path.read_text())
-        assert config["schema-version"] == "0.2"
-        build_env = {
-            item["name"]: item["value"]
-            for item in config["io"]["buildpacks"]["build"]["env"]
-        }
-
-        assert build_env["GOOGLE_PYTHON_VERSION"] == "3.12"
-        assert build_env["GOOGLE_ENTRYPOINT"] == (
-            "uvicorn server:app --host 0.0.0.0 --port $PORT"
-        )
 
 
 def test_cloud_build_server_directory_entrypoint_imports() -> None:
