@@ -2,10 +2,12 @@
 # Google Cloud Buildpacks configuration for Cloud Run source deploys.
 # Pinning runtime and entrypoint keeps Cloud Build Trigger behavior reproducible.
 
-[[build.env]]
-name = "GOOGLE_RUNTIME_VERSION"
+schema-version = "0.2"
+
+[[io.buildpacks.build.env]]
+name = "GOOGLE_PYTHON_VERSION"
 value = "3.12"
 
-[[build.env]]
+[[io.buildpacks.build.env]]
 name = "GOOGLE_ENTRYPOINT"
 value = "uvicorn server:app --host 0.0.0.0 --port $PORT"

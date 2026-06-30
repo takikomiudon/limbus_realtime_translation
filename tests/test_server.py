@@ -96,12 +96,13 @@ def test_package_exports_cloud_run_entrypoint() -> None:
 def test_buildpack_runtime_and_entrypoint_are_pinned() -> None:
     """Keep Cloud Run source deploys aligned with the tested server runtime."""
     config = tomllib.loads((PROJECT_ROOT / "project.toml").read_text())
+    assert config["schema-version"] == "0.2"
     build_env = {
         item["name"]: item["value"]
-        for item in config["build"]["env"]
+        for item in config["io"]["buildpacks"]["build"]["env"]
     }
 
-    assert build_env["GOOGLE_RUNTIME_VERSION"] == "3.12"
+    assert build_env["GOOGLE_PYTHON_VERSION"] == "3.12"
     assert build_env["GOOGLE_ENTRYPOINT"] == (
         "uvicorn server:app --host 0.0.0.0 --port $PORT"
     )

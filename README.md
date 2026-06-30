@@ -124,7 +124,7 @@ GitHub Actions は CI のみを担当するため、同じ push で二重に Clo
 デプロイ設定を確認する場合は、Google Cloud Console の Cloud Build Triggers で対象 repository、branch、Cloud Run service、region、Artifact Registry の保存先を確認してください。
 Cloud Run の runtime 環境変数（`API_KEY`、`GOOGLE_CLOUD_PROJECT`、`FIRESTORE_DATABASE`、`CORS_ORIGINS` など）は Cloud Run service または Cloud Build Trigger 側で管理します。
 既存の Cloud Build Trigger が `GOOGLE_ENTRYPOINT=uvicorn server:app --host 0.0.0.0 --port $PORT` を使っている場合も、`server` package が ASGI app を公開するためそのまま起動できます。
-Cloud Buildpacks の Python runtime と entrypoint は `project.toml` で固定しています。
+Cloud Buildpacks の Python runtime は `project.toml` の `GOOGLE_PYTHON_VERSION`、entrypoint は `GOOGLE_ENTRYPOINT` で固定しています。
 
 ## コード構成
 
