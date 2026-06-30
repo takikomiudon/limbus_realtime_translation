@@ -1,0 +1,20 @@
+# docker-compose.emulator.yml
+# Optional local Firestore emulator stack for integration testing only.
+services:
+  firestore-emulator:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    command:
+      - gcloud
+      - emulators
+      - firestore
+      - start
+      - --host-port=0.0.0.0:8080
+      - --project=limbus-local
+    ports:
+      - "8080:8080"
+
+  server:
+    depends_on:
+      - firestore-emulator
+    env_file:
+      - .env.docker.example

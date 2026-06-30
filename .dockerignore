@@ -1,0 +1,16 @@
+# .dockerignore
+# Keep local secrets, virtualenvs, caches, and test-only artifacts out of images.
+.env
+.env.*
+!.env.example
+credentials.json
+*.json
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.git/
+.github/
+tests/
+Dockerfile
+docker-compose.yml

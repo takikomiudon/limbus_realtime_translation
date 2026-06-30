@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<!--
+server/templates/index.html
+
+Translation history page served by the FastAPI app.
+Keeping the page outside Python route code makes server.app easier to test.
+-->
+<html>
+<head>
+    <title>20250613 Limbus Companyアップデート日程配信 日本語訳 v1.2</title>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        #translations {
+            max-height: 80vh;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        .translation {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .timestamp {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .text-container {
+            display: flex;
+            gap: 20px;
+        }
+        .korean-text {
+            flex: 1;
+            padding-right: 10px;
+            border-right: 1px solid #ddd;
+        }
+        .japanese-text {
+            flex: 1;
+        }
+        #controls {
+            position: sticky;
+            top: 0;
+            background: #f5f5f5;
+            padding: 20px 0;
+            margin-bottom: 20px;
+            z-index: 100;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .pagination {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            margin-left: auto;
+        }
+        button {
+            padding: 8px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        h1 {
+            position: sticky;
+            top: 0;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px 0;
+            z-index: 100;
+        }
+        #error-message {
+            color: red;
+            margin: 10px 0;
+            display: none;
+        }
+        .notice {
+            margin-top: 30px;
+            padding: 15px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Limbusアプデ日程配信 日本語訳 v1.2</h1>
+    <div id="controls">
+        <button onclick="toggleAutoScroll()" id="autoScrollBtn">自動スクロール: ON</button>
+        <button onclick="manualRefresh()" id="refresh-button">手動更新</button>
+        <div class="pagination">
+            <button onclick="changePage('first')" id="firstPageBtn">最初へ</button>
+            <button onclick="changePage('prev')" id="prevPageBtn">前へ</button>
+            <span id="pageInfo">1 / 1</span>
+            <button onclick="changePage('next')" id="nextPageBtn">次へ</button>
+            <button onclick="changePage('last')" id="lastPageBtn">最後へ</button>
+        </div>
+    </div>
+    <div id="error-message">
+        エラーが発生しました。しばらく待ってから手動更新ボタンを押してください。
+    </div>
+    <div id="translations"></div>
+    <div class="notice">
+        <h2>ご利用に関する注意事項</h2>
+        <ul>
+            <li>ページの更新が短時間に集中した場合、一時的にアクセス制限がかかる場合がございます。</li>
+            <li>内容は随時更新される可能性がございますので、適宜ページの更新をお願いいたします。</li>
+            <li>機械翻訳を使用しているため、翻訳の精度には限界がございます。予めご了承ください。</li>
+        </ul>
+    </div>
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+        let autoScroll = true;
+        let isUpdating = false;
+        let errorCount = 0;
+        const MAX_ERROR_COUNT = 3;
+        let nextUpdateTime = 0;
+        const MIN_UPDATE_INTERVAL = 2000;
+
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            return `${year}年${month}月${day}日 ${hours}:${minutes}:${seconds}`;
+        }
+
+        function toggleAutoScroll() {
+            autoScroll = !autoScroll;
+            document.getElementById('autoScrollBtn').textContent =
+                `自動スクロール: ${autoScroll ? 'ON' : 'OFF'}`;
+        }
+
+        function scrollToBottom() {
+            if (autoScroll) {
+                const container = document.getElementById('translations');
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+
+        function updatePaginationButtons() {
+            document.getElementById('firstPageBtn').disabled = currentPage === 1;
+            document.getElementById('prevPageBtn').disabled = currentPage === 1;
+            document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
+            document.getElementById('lastPageBtn').disabled = currentPage === totalPages;
+            document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
+        }
+
+        async function changePage(action) {
+            let newPage = currentPage;
+            if (action === 'first') newPage = 1;
+            if (action === 'prev') newPage = Math.max(1, currentPage - 1);
+            if (action === 'next') newPage = Math.min(totalPages, currentPage + 1);
+            if (action === 'last') newPage = totalPages;
+            if (newPage !== currentPage) {
+                currentPage = newPage;
+                await updateTranslations();
+            }
+        }
+
+        function handleError() {
+            errorCount++;
+            const errorMessage = document.getElementById('error-message');
+            errorMessage.style.display = 'block';
+            if (errorCount >= MAX_ERROR_COUNT) {
+                clearInterval(updateTimer);
+                errorMessage.textContent =
+                    'エラーが続いたため自動更新を停止しました。手動更新をお試しください。';
+            }
+        }
+
+        async function manualRefresh() {
+            const now = Date.now();
+            if (now < nextUpdateTime) return;
+            const refreshButton = document.getElementById('refresh-button');
+            refreshButton.disabled = true;
+            try {
+                await updateTranslations();
+                errorCount = 0;
+                document.getElementById('error-message').style.display = 'none';
+            } catch (error) {
+                console.error('更新エラー:', error);
+                handleError();
+            } finally {
+                refreshButton.disabled = false;
+                nextUpdateTime = Date.now() + MIN_UPDATE_INTERVAL;
+            }
+        }
+
+        async function updateTranslations() {
+            if (isUpdating) return;
+            isUpdating = true;
+            try {
+                const response = await fetch(`/api/translations?page=${currentPage}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                totalPages = data.pagination.total_pages;
+                updatePaginationButtons();
+
+                const container = document.getElementById('translations');
+                container.innerHTML = data.translations
+                    .map((item, index) => {
+                        const itemNumber =
+                            (currentPage - 1) * data.pagination.items_per_page + index + 1;
+                        return `
+                            <div class="translation">
+                                <div class="timestamp">
+                                    ${itemNumber}. ${formatTimestamp(item.timestamp)}
+                                </div>
+                                <div class="text-container">
+                                    <div class="korean-text">${item.korean_text}</div>
+                                    <div class="japanese-text">${item.translation}</div>
+                                </div>
+                            </div>
+                        `;
+                    })
+                    .join('');
+
+                if (autoScroll && currentPage === totalPages) scrollToBottom();
+            } catch (error) {
+                console.error('Fetch error:', error);
+                handleError();
+            } finally {
+                isUpdating = false;
+            }
+        }
+
+        updateTranslations();
+        const updateTimer = setInterval(async () => {
+            if (document.hidden) return;
+            await updateTranslations();
+        }, 3000);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) updateTranslations();
+        });
+        window.addEventListener('beforeunload', () => {
+            clearInterval(updateTimer);
+        });
+    </script>
+</body>
+</html>

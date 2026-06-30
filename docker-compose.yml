@@ -1,0 +1,12 @@
+# docker-compose.yml
+# Local server stack that uses the real Firestore target from .env.
+services:
+  server:
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./credentials.json:/app/credentials.json:ro
+    ports:
+      - "8000:8000"

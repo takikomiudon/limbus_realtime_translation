@@ -1,0 +1,50 @@
+# pyproject.toml
+# Python project metadata, dependencies, and local quality-tool settings.
+# uv is the primary development workflow for this repository.
+[project]
+name = "limbus-realtime-translation"
+version = "0.1.0"
+description = "Realtime Korean-to-Japanese translation tools for Limbus Company streams."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi==0.110.0",
+    "google-cloud-firestore==2.15.0",
+    "python-dotenv==1.0.1",
+    "uvicorn==0.27.1",
+]
+
+[project.optional-dependencies]
+client = [
+    "google-cloud-speech",
+    "google-genai",
+    "pyaudio",
+    "requests",
+]
+
+[dependency-groups]
+dev = [
+    "httpx<0.28",
+    "pytest",
+    "ruff",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+    # FastAPI intentionally uses Depends/Security calls as parameter defaults.
+    "B008",
+    # Existing prompt and embedded HTML strings are intentionally long.
+    "E501",
+]
