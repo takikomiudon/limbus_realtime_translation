@@ -7,12 +7,16 @@ These tests avoid Firestore so local development remains fast and offline.
 from __future__ import annotations
 
 import math
+import tomllib
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 import server
 from server.server import app, get_translation_repository, rate_limit_store
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class FakeTranslationRepository:
@@ -87,6 +91,20 @@ def test_get_html_returns_page() -> None:
 def test_package_exports_cloud_run_entrypoint() -> None:
     """Keep uvicorn server:app working for Cloud Build Trigger deploys."""
     assert server.app is app
+
+
+def test_buildpack_runtime_and_entrypoint_are_pinned() -> None:
+    """Keep Cloud Run source deploys aligned with the tested server runtime."""
+    config = tomllib.loads((PROJECT_ROOT / "project.toml").read_text())
+    build_env = {
+        item["name"]: item["value"]
+        for item in config["build"]["env"]
+    }
+
+    assert build_env["GOOGLE_RUNTIME_VERSION"] == "3.12"
+    assert build_env["GOOGLE_ENTRYPOINT"] == (
+        "uvicorn server:app --host 0.0.0.0 --port $PORT"
+    )
 
 
 def test_get_translations_returns_fake_data_and_pagination() -> None:
