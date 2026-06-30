@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Protocol
 
 from google.cloud import firestore
+from google.cloud.firestore_v1 import AsyncClient as AsyncFirestoreClient
 
 
 class TranslationRepository(Protocol):
@@ -32,14 +33,14 @@ class FirestoreTranslationRepository:
 
     def __init__(self, database: str, project: str | None = None) -> None:
         """Create the Firestore client lazily from the FastAPI dependency."""
-        self._db = firestore.Client(project=project, database=database)
+        self._db = AsyncFirestoreClient(project=project, database=database)
 
     async def create_translation(
         self, timestamp: int, translation: str, korean_text: str
     ) -> None:
         """Store a translation document with the same fields used historically."""
         doc_ref = self._db.collection("translations").document()
-        doc_ref.set(
+        await doc_ref.set(
             {
                 "timestamp": timestamp,
                 "translation": translation,
@@ -53,7 +54,7 @@ class FirestoreTranslationRepository:
     ) -> dict[str, object]:
         """Fetch paginated translation records from Firestore."""
         translations_ref = self._db.collection("translations")
-        total_docs = len(list(translations_ref.stream()))
+        total_docs = len([doc async for doc in translations_ref.stream()])
         total_pages = math.ceil(total_docs / limit) if total_docs else 0
         direction = (
             firestore.Query.ASCENDING
@@ -69,7 +70,7 @@ class FirestoreTranslationRepository:
         )
 
         translations = []
-        for doc in docs:
+        async for doc in docs:
             data = doc.to_dict()
             translations.append(
                 {
