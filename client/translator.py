@@ -5,7 +5,7 @@ Gemini-backed Korean-to-Japanese translation helpers.
 
 from google import genai
 
-from client.glossary import build_translation_prompt
+from client.glossary import build_system_prompt
 
 MODEL_NAME = "gemini-2.5-flash-preview-05-20"
 
@@ -21,7 +21,10 @@ class GeminiTranslator:
         try:
             response = self._client.models.generate_content(
                 model=MODEL_NAME,
-                contents=[build_translation_prompt(text)],
+                contents=[text],
+                config=genai.types.GenerateContentConfig(
+                    system_instruction=build_system_prompt(),
+                ),
             )
             return response.text
         except Exception as exc:

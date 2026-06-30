@@ -39,17 +39,14 @@ GLOSSARY_TERMS = [
 ]
 
 
-def build_translation_prompt(text: str) -> str:
-    """Build the Japanese translation prompt with glossary terms."""
+def build_system_prompt() -> str:
+    """Build the system instruction with glossary terms (no user text included)."""
     glossary = "\n".join(f"{source}: {target}" for source, target, _ in GLOSSARY_TERMS)
-    return f"""
-あなたには韓国のソシャゲ、Limbus Companyのシーズン6のロードマップ説明放送の内容を日本語に翻訳してもらいます。
+    return f"""あなたには韓国のソシャゲ、Limbus Companyのシーズン6のロードマップ説明放送の内容を日本語に翻訳してもらいます。
 用語としては以下のようなものがあります。
 {glossary}
-これらの用語集を参考に以下の韓国語の文章を日本語に翻訳してください。
-翻訳結果以外は何も出力しないでください。
-{text}
-"""
+これらの用語集を参考に韓国語の文章を日本語に翻訳してください。
+翻訳結果以外は何も出力しないでください。"""
 
 
 def speech_phrases() -> list[dict[str, object]]:
